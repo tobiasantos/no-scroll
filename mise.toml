@@ -1,0 +1,41 @@
+[tools]
+java = "temurin-25"
+go   = "1.27"
+
+[tasks.build]
+shell = "bash -c"
+description = "Compila a API (Kotlin) e os servicos Go"
+run = [
+  "cd api && ./gradlew build -x test",
+  "cd services && go build ./...",
+]
+
+[tasks.test]
+shell = "bash -c"
+description = "Roda os testes da API e dos servicos Go"
+run = [
+  "cd api && ./gradlew test",
+  "cd services && go test ./...",
+]
+
+[tasks.lint]
+shell = "bash -c"
+description = "Verificacoes estaticas"
+run = [
+  "cd services && go vet ./...",
+]
+
+[tasks.up]
+shell = "bash -c"
+description = "Sobe o ambiente com Docker Compose"
+run = "docker compose up -d"
+
+[tasks.run]
+shell = "bash -c"
+description = "Sobe a API na 8080"
+run = "cd api && ./gradlew run"
+
+[tasks.ci]
+description = "Reproduz o pipeline do CI localmente"
+shell = "bash -c"
+run = ["mise run lint", "mise run build", "mise run test"]

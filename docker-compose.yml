@@ -1,0 +1,11 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-noscroll}
+      POSTGRES_USER: ${DB_USER:-noscroll}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-noscroll}
+    ports: ["5432:5432"]
+    volumes: [dados:/var/lib/postgresql/data]
+volumes:
+  dados:
