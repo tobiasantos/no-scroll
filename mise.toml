@@ -35,6 +35,16 @@ shell = "bash -c"
 description = "Sobe a API na 8080"
 run = "cd api && ./gradlew run"
 
+[tasks.demo]
+shell = "bash -c"
+description = "Cria e lista um setup na API, para ver o CRUD respondendo"
+run = """
+curl -s -i -X POST localhost:8080/setups -H 'Content-Type: application/json' \
+  -d '{"appPackage":"com.twitter.android","appName":"X","dailyLimitMinutes":20}' | head -3
+echo
+curl -s localhost:8080/setups
+"""
+
 [tasks.ci]
 description = "Reproduz o pipeline do CI localmente"
 shell = "bash -c"

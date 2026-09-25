@@ -21,8 +21,9 @@ Pré-requisitos: [mise](https://mise.jdx.dev) e Docker.
 mise install      # JDK 25 e Go
 mise run up       # PostgreSQL
 mise run build
-mise run test
-mise run run      # API em http://localhost:8080
+mise run test     # os testes de integração precisam do Docker
+mise run run      # API em http://localhost:8080 (Swagger em /docs)
+mise run demo     # cria e lista um setup
 ```
 
 ## Estrutura
