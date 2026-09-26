@@ -12,9 +12,11 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.update
 import javax.sql.DataSource
 
 data class DbConfig(val url: String, val user: String, val password: String) {
@@ -69,6 +71,22 @@ class PostgresRepository(private val db: Database) : SetupRepository {
             it[alertIntervalMinutes] = new.alertIntervalMinutes
         } get Setups.id
         Setup(id, new.appPackage, new.appName, new.dailyLimitMinutes, new.alertMode, new.alertIntervalMinutes)
+    }
+
+    override suspend fun update(id: Int, new: NewSetup): Setup? = suspendTransaction(db) {
+        val updatedRows = Setups.update({ Setups.id eq id }) {
+            it[appPackage] = new.appPackage
+            it[appName] = new.appName
+            it[dailyLimitMinutes] = new.dailyLimitMinutes
+            it[alertMode] = new.alertMode
+            it[alertIntervalMinutes] = new.alertIntervalMinutes
+        }
+        if (updatedRows == 0) null
+        else Setup(id, new.appPackage, new.appName, new.dailyLimitMinutes, new.alertMode, new.alertIntervalMinutes)
+    }
+
+    override suspend fun remove(id: Int): Boolean = suspendTransaction(db) {
+        Setups.deleteWhere { Setups.id eq id } > 0
     }
 
     private fun ResultRow.toSetup() = Setup(
