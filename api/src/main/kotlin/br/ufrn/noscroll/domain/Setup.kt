@@ -27,4 +27,6 @@ interface SetupRepository {
     suspend fun list(): List<Setup>
     suspend fun find(id: Int): Setup?
     suspend fun add(new: NewSetup): Setup
+    suspend fun update(id: Int, new: NewSetup): Setup?
+    suspend fun remove(id: Int): Boolean
 }

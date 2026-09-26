@@ -17,4 +17,14 @@ class InMemoryRepository : SetupRepository {
     override suspend fun add(new: NewSetup): Setup =
         Setup(nextId++, new.appPackage, new.appName, new.dailyLimitMinutes, new.alertMode, new.alertIntervalMinutes)
             .also { setups.add(it) }
+
+    override suspend fun update(id: Int, new: NewSetup): Setup? {
+        val index = setups.indexOfFirst { it.id == id }
+        if (index == -1) return null
+        val updated = Setup(id, new.appPackage, new.appName, new.dailyLimitMinutes, new.alertMode, new.alertIntervalMinutes)
+        setups[index] = updated
+        return updated
+    }
+
+    override suspend fun remove(id: Int): Boolean = setups.removeIf { it.id == id }
 }
