@@ -1,6 +1,9 @@
 package br.ufrn.noscroll.adapters.web
 
+import br.ufrn.noscroll.domain.NewSession
 import br.ufrn.noscroll.domain.NewSetup
+import br.ufrn.noscroll.domain.Session
+import br.ufrn.noscroll.domain.SessionRepository
 import br.ufrn.noscroll.domain.Setup
 import br.ufrn.noscroll.domain.SetupRepository
 import io.ktor.http.HttpHeaders
@@ -24,11 +27,12 @@ import org.koin.ktor.ext.inject
 
 @OptIn(ExperimentalKtorApi::class)
 fun Application.routes() {
-    val repository by inject<SetupRepository>()
+    val setups by inject<SetupRepository>()
+    val sessions by inject<SessionRepository>()
 
     routing {
         route("/setups") {
-            get { call.respond(repository.list()) }.describe {
+            get { call.respond(setups.list()) }.describe {
                 summary = "Lista os setups"
                 responses { HttpStatusCode.OK { schema = jsonSchema<List<Setup>>() } }
             }
@@ -36,7 +40,7 @@ fun Application.routes() {
             get("/{id}") {
                 val id = call.parameters["id"]?.toIntOrNull()
                     ?: return@get call.respond(HttpStatusCode.BadRequest)
-                val setup = repository.find(id)
+                val setup = setups.find(id)
                     ?: return@get call.respond(HttpStatusCode.NotFound)
                 call.respond(setup)
             }.describe {
@@ -50,7 +54,7 @@ fun Application.routes() {
 
             post {
                 val new = call.receive<NewSetup>()
-                val created = repository.add(new)
+                val created = setups.add(new)
                 call.response.header(HttpHeaders.Location, "/setups/${created.id}")
                 call.respond(HttpStatusCode.Created, created)
             }.describe {
@@ -62,7 +66,7 @@ fun Application.routes() {
             put("/{id}") {
                 val id = call.parameters["id"]?.toIntOrNull()
                     ?: return@put call.respond(HttpStatusCode.BadRequest)
-                val updated = repository.update(id, call.receive<NewSetup>())
+                val updated = setups.update(id, call.receive<NewSetup>())
                     ?: return@put call.respond(HttpStatusCode.NotFound)
                 call.respond(updated)
             }.describe {
@@ -78,7 +82,7 @@ fun Application.routes() {
             delete("/{id}") {
                 val id = call.parameters["id"]?.toIntOrNull()
                     ?: return@delete call.respond(HttpStatusCode.BadRequest)
-                if (!repository.remove(id)) return@delete call.respond(HttpStatusCode.NotFound)
+                if (!setups.remove(id)) return@delete call.respond(HttpStatusCode.NotFound)
                 call.respond(HttpStatusCode.NoContent)
             }.describe {
                 summary = "Remove um setup"
@@ -86,6 +90,99 @@ fun Application.routes() {
                 responses {
                     HttpStatusCode.NoContent { description = "Setup removido" }
                     HttpStatusCode.NotFound { description = "Setup inexistente" }
+                }
+            }
+
+            route("/{id}/sessions") {
+                get {
+                    val setupId = call.parameters["id"]?.toIntOrNull()
+                        ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    if (setups.find(setupId) == null) return@get call.respond(HttpStatusCode.NotFound)
+                    call.respond(sessions.list(setupId))
+                }.describe {
+                    summary = "Lista as sessões de um setup"
+                    parameters { path("id") { schema = jsonSchema<Int>() } }
+                    responses {
+                        HttpStatusCode.OK { schema = jsonSchema<List<Session>>() }
+                        HttpStatusCode.NotFound { description = "Setup inexistente" }
+                    }
+                }
+
+                post {
+                    val setupId = call.parameters["id"]?.toIntOrNull()
+                        ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    if (setups.find(setupId) == null) return@post call.respond(HttpStatusCode.NotFound)
+                    val created = sessions.add(setupId, call.receive<NewSession>())
+                    call.response.header(HttpHeaders.Location, "/setups/$setupId/sessions/${created.id}")
+                    call.respond(HttpStatusCode.Created, created)
+                }.describe {
+                    summary = "Registra uma sessão de uso"
+                    parameters { path("id") { schema = jsonSchema<Int>() } }
+                    requestBody { schema = jsonSchema<NewSession>() }
+                    responses {
+                        HttpStatusCode.Created { schema = jsonSchema<Session>() }
+                        HttpStatusCode.NotFound { description = "Setup inexistente" }
+                    }
+                }
+
+                get("/{sessionId}") {
+                    val setupId = call.parameters["id"]?.toIntOrNull()
+                        ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    val sessionId = call.parameters["sessionId"]?.toIntOrNull()
+                        ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    val session = sessions.find(setupId, sessionId)
+                        ?: return@get call.respond(HttpStatusCode.NotFound)
+                    call.respond(session)
+                }.describe {
+                    summary = "Busca uma sessão"
+                    parameters {
+                        path("id") { schema = jsonSchema<Int>() }
+                        path("sessionId") { schema = jsonSchema<Int>() }
+                    }
+                    responses {
+                        HttpStatusCode.OK { schema = jsonSchema<Session>() }
+                        HttpStatusCode.NotFound { description = "Sessão inexistente neste setup" }
+                    }
+                }
+
+                put("/{sessionId}") {
+                    val setupId = call.parameters["id"]?.toIntOrNull()
+                        ?: return@put call.respond(HttpStatusCode.BadRequest)
+                    val sessionId = call.parameters["sessionId"]?.toIntOrNull()
+                        ?: return@put call.respond(HttpStatusCode.BadRequest)
+                    val updated = sessions.update(setupId, sessionId, call.receive<NewSession>())
+                        ?: return@put call.respond(HttpStatusCode.NotFound)
+                    call.respond(updated)
+                }.describe {
+                    summary = "Substitui uma sessão"
+                    parameters {
+                        path("id") { schema = jsonSchema<Int>() }
+                        path("sessionId") { schema = jsonSchema<Int>() }
+                    }
+                    requestBody { schema = jsonSchema<NewSession>() }
+                    responses {
+                        HttpStatusCode.OK { schema = jsonSchema<Session>() }
+                        HttpStatusCode.NotFound { description = "Sessão inexistente neste setup" }
+                    }
+                }
+
+                delete("/{sessionId}") {
+                    val setupId = call.parameters["id"]?.toIntOrNull()
+                        ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                    val sessionId = call.parameters["sessionId"]?.toIntOrNull()
+                        ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                    if (!sessions.remove(setupId, sessionId)) return@delete call.respond(HttpStatusCode.NotFound)
+                    call.respond(HttpStatusCode.NoContent)
+                }.describe {
+                    summary = "Remove uma sessão"
+                    parameters {
+                        path("id") { schema = jsonSchema<Int>() }
+                        path("sessionId") { schema = jsonSchema<Int>() }
+                    }
+                    responses {
+                        HttpStatusCode.NoContent { description = "Sessão removida" }
+                        HttpStatusCode.NotFound { description = "Sessão inexistente neste setup" }
+                    }
                 }
             }
         }
