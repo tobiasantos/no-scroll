@@ -5,7 +5,7 @@ import br.ufrn.noscroll.domain.NewSetup
 import br.ufrn.noscroll.domain.Setup
 import br.ufrn.noscroll.domain.SetupRepository
 
-class InMemoryRepository : SetupRepository {
+class InMemorySetupRepository : SetupRepository {
     private val setups = mutableListOf(
         Setup(1, "com.instagram.android", "Instagram", 60),
         Setup(2, "com.zhiliaoapp.musically", "TikTok", 30, AlertMode.PERIODIC, 15),

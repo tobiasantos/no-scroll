@@ -1,10 +1,12 @@
 package br.ufrn.noscroll
 
 import br.ufrn.noscroll.adapters.persistence.DbConfig
-import br.ufrn.noscroll.adapters.persistence.PostgresRepository
+import br.ufrn.noscroll.adapters.persistence.PostgresSessionRepository
+import br.ufrn.noscroll.adapters.persistence.PostgresSetupRepository
 import br.ufrn.noscroll.adapters.persistence.createDataSource
 import br.ufrn.noscroll.adapters.persistence.migrate
 import br.ufrn.noscroll.adapters.web.routes
+import br.ufrn.noscroll.domain.SessionRepository
 import br.ufrn.noscroll.domain.SetupRepository
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -26,12 +28,18 @@ fun Application.module(config: DbConfig = DbConfig.fromEnv()) {
     val dataSource = createDataSource(config)
     migrate(dataSource)
     monitor.subscribe(ApplicationStopped) { dataSource.close() }
-    configure(PostgresRepository(Database.connect(dataSource)))
+    val db = Database.connect(dataSource)
+    configure(PostgresSetupRepository(db), PostgresSessionRepository(db))
 }
 
-fun Application.configure(repository: SetupRepository) {
+fun Application.configure(setups: SetupRepository, sessions: SessionRepository) {
     install(Koin) {
-        modules(module { single<SetupRepository> { repository } })
+        modules(
+            module {
+                single<SetupRepository> { setups }
+                single<SessionRepository> { sessions }
+            },
+        )
     }
     install(ContentNegotiation) { json() }
     routes()
