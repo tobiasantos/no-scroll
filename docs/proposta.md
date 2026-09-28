@@ -9,7 +9,7 @@ Para pessoas que perdem horas rolando feeds em apps como TikTok e Instagram
 Que não conseguem controlar o próprio tempo de uso
 O no-scroll é uma API de controle de tempo de uso de apps
 Que guarda regras de uso por app e avalia quando o limite foi ultrapassado
-Diferente dos controles nativos do celular, que só mostram o tempo gasto
+Diferente dos limites nativos do celular, que avisam uma vez e são ignorados com um toque
 Nosso produto alerta como um despertador, uma vez ou periodicamente, até o usuário parar
 ```
 
