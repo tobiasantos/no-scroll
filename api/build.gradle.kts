@@ -32,6 +32,7 @@ dependencies {
     testImplementation("io.ktor:ktor-server-test-host:3.5.2")
     testImplementation("io.ktor:ktor-client-content-negotiation:3.5.2")
     testImplementation("org.testcontainers:testcontainers-postgresql:2.0.5")
+    testImplementation("com.tngtech.archunit:archunit:1.5.0")
 }
 
 kotlin { jvmToolchain(25) }
