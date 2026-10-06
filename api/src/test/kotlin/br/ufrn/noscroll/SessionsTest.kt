@@ -113,4 +113,21 @@ class SessionsTest {
         client.delete("/setups/${setup.id}")
         assertEquals(HttpStatusCode.NotFound, client.get("/setups/${setup.id}/sessions/${created.id}").status)
     }
+
+    @Test
+    fun `filtra as sessoes pelo dia`() = testApplication {
+        appWithDb()
+        val client = createClient { install(ContentNegotiation) { json() } }
+        val setup = client.createSetup()
+        val today = client.post("/setups/${setup.id}/sessions") {
+            contentType(ContentType.Application.Json)
+            setBody(session)
+        }.body<Session>()
+        client.post("/setups/${setup.id}/sessions") {
+            contentType(ContentType.Application.Json)
+            setBody(NewSession(Instant.parse("2026-09-27T23:30:00Z"), 15))
+        }
+        val sessions = client.get("/setups/${setup.id}/sessions?date=2026-09-28").body<List<Session>>()
+        assertEquals(listOf(today), sessions)
+    }
 }

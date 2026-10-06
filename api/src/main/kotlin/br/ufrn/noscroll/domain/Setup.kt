@@ -24,7 +24,7 @@ data class NewSetup(
 )
 
 interface SetupRepository {
-    suspend fun list(): List<Setup>
+    suspend fun list(app: String?, pageRequest: PageRequest): Page<Setup>
     suspend fun find(id: Int): Setup?
     suspend fun add(new: NewSetup): Setup
     suspend fun update(id: Int, new: NewSetup): Setup?

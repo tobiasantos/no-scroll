@@ -3,6 +3,8 @@ package br.ufrn.noscroll.adapters.persistence
 import br.ufrn.noscroll.domain.AlertMode
 import br.ufrn.noscroll.domain.NewSession
 import br.ufrn.noscroll.domain.NewSetup
+import br.ufrn.noscroll.domain.Page
+import br.ufrn.noscroll.domain.PageRequest
 import br.ufrn.noscroll.domain.Session
 import br.ufrn.noscroll.domain.SessionRepository
 import br.ufrn.noscroll.domain.Setup
@@ -10,12 +12,17 @@ import br.ufrn.noscroll.domain.SetupRepository
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.flywaydb.core.Flyway
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.like
+import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -23,6 +30,7 @@ import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import javax.sql.DataSource
@@ -73,8 +81,14 @@ object Sessions : Table("sessions") {
 
 class PostgresSetupRepository(private val db: Database) : SetupRepository {
 
-    override suspend fun list(): List<Setup> = suspendTransaction(db) {
-        Setups.selectAll().orderBy(Setups.id to SortOrder.ASC).map { it.toSetup() }
+    override suspend fun list(app: String?, pageRequest: PageRequest): Page<Setup> = suspendTransaction(db) {
+        val where = if (app == null) Op.TRUE else Setups.appName.lowerCase() like "%${app.lowercase()}%"
+        val total = Setups.selectAll().where(where).count()
+        val items = Setups.selectAll().where(where)
+            .orderBy(Setups.id to SortOrder.ASC)
+            .limit(pageRequest.size).offset(pageRequest.offset)
+            .map { it.toSetup() }
+        Page(items, pageRequest.page, pageRequest.size, total)
     }
 
     override suspend fun find(id: Int): Setup? = suspendTransaction(db) {
@@ -120,8 +134,13 @@ class PostgresSetupRepository(private val db: Database) : SetupRepository {
 
 class PostgresSessionRepository(private val db: Database) : SessionRepository {
 
-    override suspend fun list(setupId: Int): List<Session> = suspendTransaction(db) {
-        Sessions.selectAll().where { Sessions.setupId eq setupId }
+    override suspend fun list(setupId: Int, date: LocalDate?): List<Session> = suspendTransaction(db) {
+        var where: Op<Boolean> = Sessions.setupId eq setupId
+        if (date != null) {
+            val start = date.atStartOfDay().atOffset(ZoneOffset.UTC)
+            where = where and (Sessions.startedAt greaterEq start) and (Sessions.startedAt less start.plusDays(1))
+        }
+        Sessions.selectAll().where(where)
             .orderBy(Sessions.startedAt to SortOrder.ASC).map { it.toSession() }
     }
 

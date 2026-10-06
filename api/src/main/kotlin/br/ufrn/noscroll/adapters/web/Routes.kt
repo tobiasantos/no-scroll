@@ -2,6 +2,8 @@ package br.ufrn.noscroll.adapters.web
 
 import br.ufrn.noscroll.domain.NewSession
 import br.ufrn.noscroll.domain.NewSetup
+import br.ufrn.noscroll.domain.Page
+import br.ufrn.noscroll.domain.PageRequest
 import br.ufrn.noscroll.domain.Session
 import br.ufrn.noscroll.domain.SessionRepository
 import br.ufrn.noscroll.domain.Setup
@@ -24,6 +26,8 @@ import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.utils.io.ExperimentalKtorApi
 import org.koin.ktor.ext.inject
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
 
 @OptIn(ExperimentalKtorApi::class)
 fun Application.routes() {
@@ -32,9 +36,25 @@ fun Application.routes() {
 
     routing {
         route("/setups") {
-            get { call.respond(setups.list()) }.describe {
-                summary = "Lista os setups"
-                responses { HttpStatusCode.OK { schema = jsonSchema<List<Setup>>() } }
+            get {
+                val page = call.request.queryParameters["page"]
+                    ?.let { it.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest) } ?: 0
+                val size = call.request.queryParameters["size"]
+                    ?.let { it.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest) } ?: PageRequest.DEFAULT_SIZE
+                if (page < 0 || size !in 1..PageRequest.MAX_SIZE) return@get call.respond(HttpStatusCode.BadRequest)
+                val app = call.request.queryParameters["app"]?.takeIf { it.isNotBlank() }
+                call.respond(setups.list(app, PageRequest(page, size)))
+            }.describe {
+                summary = "Lista os setups, paginados e filtrados por nome do app"
+                parameters {
+                    query("page") { schema = jsonSchema<Int>() }
+                    query("size") { schema = jsonSchema<Int>() }
+                    query("app") { schema = jsonSchema<String>() }
+                }
+                responses {
+                    HttpStatusCode.OK { schema = jsonSchema<Page<Setup>>() }
+                    HttpStatusCode.BadRequest { description = "page ou size inválido (size entre 1 e 100)" }
+                }
             }
 
             get("/{id}") {
@@ -97,13 +117,24 @@ fun Application.routes() {
                 get {
                     val setupId = call.parameters["id"]?.toIntOrNull()
                         ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    val date = call.request.queryParameters["date"]?.let {
+                        try {
+                            LocalDate.parse(it)
+                        } catch (e: DateTimeParseException) {
+                            return@get call.respond(HttpStatusCode.BadRequest)
+                        }
+                    }
                     if (setups.find(setupId) == null) return@get call.respond(HttpStatusCode.NotFound)
-                    call.respond(sessions.list(setupId))
+                    call.respond(sessions.list(setupId, date))
                 }.describe {
-                    summary = "Lista as sessões de um setup"
-                    parameters { path("id") { schema = jsonSchema<Int>() } }
+                    summary = "Lista as sessões de um setup, filtradas por dia (UTC)"
+                    parameters {
+                        path("id") { schema = jsonSchema<Int>() }
+                        query("date") { schema = jsonSchema<String>() }
+                    }
                     responses {
                         HttpStatusCode.OK { schema = jsonSchema<List<Session>>() }
+                        HttpStatusCode.BadRequest { description = "date fora do formato AAAA-MM-DD" }
                         HttpStatusCode.NotFound { description = "Setup inexistente" }
                     }
                 }
