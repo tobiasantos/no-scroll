@@ -3,6 +3,7 @@ package br.ufrn.noscroll
 import br.ufrn.noscroll.adapters.persistence.DbConfig
 import br.ufrn.noscroll.domain.AlertMode
 import br.ufrn.noscroll.domain.NewSetup
+import br.ufrn.noscroll.domain.Page
 import br.ufrn.noscroll.domain.Setup
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -38,8 +39,28 @@ class SetupsTest {
     fun `lista os setups criados pela migracao`() = testApplication {
         appWithDb()
         val client = createClient { install(ContentNegotiation) { json() } }
-        val setups = client.get("/setups").body<List<Setup>>()
+        val setups = client.get("/setups").body<Page<Setup>>().items
         assertTrue(setups.any { it.appName == "Instagram" })
+    }
+
+    @Test
+    fun `pagina a listagem no SQL`() = testApplication {
+        appWithDb()
+        val client = createClient { install(ContentNegotiation) { json() } }
+        val page = client.get("/setups?page=0&size=1").body<Page<Setup>>()
+        assertEquals(1, page.items.size)
+        assertTrue(page.total >= 2)
+        val next = client.get("/setups?page=1&size=1").body<Page<Setup>>()
+        assertTrue(next.items.single().id != page.items.single().id)
+    }
+
+    @Test
+    fun `filtra pelo nome do app sem diferenciar maiusculas`() = testApplication {
+        appWithDb()
+        val client = createClient { install(ContentNegotiation) { json() } }
+        val setups = client.get("/setups?app=tikt").body<Page<Setup>>().items
+        assertTrue(setups.isNotEmpty())
+        assertTrue(setups.all { it.appName == "TikTok" })
     }
 
     @Test

@@ -21,4 +21,22 @@ class RoutesTest {
         application { configure(InMemorySetupRepository(), InMemorySessionRepository()) }
         assertEquals(HttpStatusCode.OK, client.get("/setups/1").status)
     }
+
+    @Test
+    fun `size acima do maximo devolve 400`() = testApplication {
+        application { configure(InMemorySetupRepository(), InMemorySessionRepository()) }
+        assertEquals(HttpStatusCode.BadRequest, client.get("/setups?size=1000").status)
+    }
+
+    @Test
+    fun `page que nao e numero devolve 400`() = testApplication {
+        application { configure(InMemorySetupRepository(), InMemorySessionRepository()) }
+        assertEquals(HttpStatusCode.BadRequest, client.get("/setups?page=abc").status)
+    }
+
+    @Test
+    fun `date fora do formato devolve 400`() = testApplication {
+        application { configure(InMemorySetupRepository(), InMemorySessionRepository()) }
+        assertEquals(HttpStatusCode.BadRequest, client.get("/setups/1/sessions?date=ontem").status)
+    }
 }
