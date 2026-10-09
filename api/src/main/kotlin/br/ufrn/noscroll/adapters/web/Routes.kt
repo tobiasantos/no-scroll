@@ -1,5 +1,6 @@
 package br.ufrn.noscroll.adapters.web
 
+import br.ufrn.noscroll.domain.InvalidInput
 import br.ufrn.noscroll.domain.NewSession
 import br.ufrn.noscroll.domain.NewSetup
 import br.ufrn.noscroll.domain.Page
@@ -13,6 +14,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.openapi.OpenApiInfo
 import io.ktor.openapi.jsonSchema
 import io.ktor.server.application.Application
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.plugins.NotFoundException
 import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.request.receive
 import io.ktor.server.response.header
@@ -38,10 +41,12 @@ fun Application.routes() {
         route("/setups") {
             get {
                 val page = call.request.queryParameters["page"]
-                    ?.let { it.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest) } ?: 0
+                    ?.let { it.toIntOrNull() ?: throw BadRequestException("page deve ser um número inteiro") } ?: 0
                 val size = call.request.queryParameters["size"]
-                    ?.let { it.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest) } ?: PageRequest.DEFAULT_SIZE
-                if (page < 0 || size !in 1..PageRequest.MAX_SIZE) return@get call.respond(HttpStatusCode.BadRequest)
+                    ?.let { it.toIntOrNull() ?: throw BadRequestException("size deve ser um número inteiro") }
+                    ?: PageRequest.DEFAULT_SIZE
+                if (page < 0) throw BadRequestException("page deve ser >= 0")
+                if (size !in 1..PageRequest.MAX_SIZE) throw BadRequestException("size deve estar entre 1 e ${PageRequest.MAX_SIZE}")
                 val app = call.request.queryParameters["app"]?.takeIf { it.isNotBlank() }
                 call.respond(setups.list(app, PageRequest(page, size)))
             }.describe {
@@ -53,41 +58,51 @@ fun Application.routes() {
                 }
                 responses {
                     HttpStatusCode.OK { schema = jsonSchema<Page<Setup>>() }
-                    HttpStatusCode.BadRequest { description = "page ou size inválido (size entre 1 e 100)" }
+                    HttpStatusCode.BadRequest { schema = jsonSchema<Problem>() }
                 }
             }
 
             get("/{id}") {
                 val id = call.parameters["id"]?.toIntOrNull()
-                    ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    ?: throw BadRequestException("O id deve ser um número inteiro")
                 val setup = setups.find(id)
-                    ?: return@get call.respond(HttpStatusCode.NotFound)
+                    ?: throw NotFoundException("O setup $id não existe")
                 call.respond(setup)
             }.describe {
                 summary = "Busca um setup pelo id"
                 parameters { path("id") { schema = jsonSchema<Int>() } }
                 responses {
                     HttpStatusCode.OK { schema = jsonSchema<Setup>() }
-                    HttpStatusCode.NotFound { description = "Setup inexistente" }
+                    HttpStatusCode.BadRequest { schema = jsonSchema<Problem>() }
+                    HttpStatusCode.NotFound { schema = jsonSchema<Problem>() }
                 }
             }
 
             post {
                 val new = call.receive<NewSetup>()
+                val violations = new.violations()
+                if (violations.isNotEmpty()) throw InvalidInput(violations)
                 val created = setups.add(new)
                 call.response.header(HttpHeaders.Location, "/setups/${created.id}")
                 call.respond(HttpStatusCode.Created, created)
             }.describe {
                 summary = "Cria um setup"
                 requestBody { schema = jsonSchema<NewSetup>() }
-                responses { HttpStatusCode.Created { schema = jsonSchema<Setup>() } }
+                responses {
+                    HttpStatusCode.Created { schema = jsonSchema<Setup>() }
+                    HttpStatusCode.BadRequest { schema = jsonSchema<Problem>() }
+                    HttpStatusCode.UnprocessableEntity { schema = jsonSchema<Problem>() }
+                }
             }
 
             put("/{id}") {
                 val id = call.parameters["id"]?.toIntOrNull()
-                    ?: return@put call.respond(HttpStatusCode.BadRequest)
-                val updated = setups.update(id, call.receive<NewSetup>())
-                    ?: return@put call.respond(HttpStatusCode.NotFound)
+                    ?: throw BadRequestException("O id deve ser um número inteiro")
+                val new = call.receive<NewSetup>()
+                val violations = new.violations()
+                if (violations.isNotEmpty()) throw InvalidInput(violations)
+                val updated = setups.update(id, new)
+                    ?: throw NotFoundException("O setup $id não existe")
                 call.respond(updated)
             }.describe {
                 summary = "Substitui um setup"
@@ -95,36 +110,39 @@ fun Application.routes() {
                 requestBody { schema = jsonSchema<NewSetup>() }
                 responses {
                     HttpStatusCode.OK { schema = jsonSchema<Setup>() }
-                    HttpStatusCode.NotFound { description = "Setup inexistente" }
+                    HttpStatusCode.BadRequest { schema = jsonSchema<Problem>() }
+                    HttpStatusCode.NotFound { schema = jsonSchema<Problem>() }
+                    HttpStatusCode.UnprocessableEntity { schema = jsonSchema<Problem>() }
                 }
             }
 
             delete("/{id}") {
                 val id = call.parameters["id"]?.toIntOrNull()
-                    ?: return@delete call.respond(HttpStatusCode.BadRequest)
-                if (!setups.remove(id)) return@delete call.respond(HttpStatusCode.NotFound)
+                    ?: throw BadRequestException("O id deve ser um número inteiro")
+                if (!setups.remove(id)) throw NotFoundException("O setup $id não existe")
                 call.respond(HttpStatusCode.NoContent)
             }.describe {
                 summary = "Remove um setup"
                 parameters { path("id") { schema = jsonSchema<Int>() } }
                 responses {
                     HttpStatusCode.NoContent { description = "Setup removido" }
-                    HttpStatusCode.NotFound { description = "Setup inexistente" }
+                    HttpStatusCode.BadRequest { schema = jsonSchema<Problem>() }
+                    HttpStatusCode.NotFound { schema = jsonSchema<Problem>() }
                 }
             }
 
             route("/{id}/sessions") {
                 get {
                     val setupId = call.parameters["id"]?.toIntOrNull()
-                        ?: return@get call.respond(HttpStatusCode.BadRequest)
+                        ?: throw BadRequestException("O id deve ser um número inteiro")
                     val date = call.request.queryParameters["date"]?.let {
                         try {
                             LocalDate.parse(it)
                         } catch (e: DateTimeParseException) {
-                            return@get call.respond(HttpStatusCode.BadRequest)
+                            throw BadRequestException("date deve estar no formato AAAA-MM-DD")
                         }
                     }
-                    if (setups.find(setupId) == null) return@get call.respond(HttpStatusCode.NotFound)
+                    if (setups.find(setupId) == null) throw NotFoundException("O setup $setupId não existe")
                     call.respond(sessions.list(setupId, date))
                 }.describe {
                     summary = "Lista as sessões de um setup, filtradas por dia (UTC)"
@@ -134,16 +152,19 @@ fun Application.routes() {
                     }
                     responses {
                         HttpStatusCode.OK { schema = jsonSchema<List<Session>>() }
-                        HttpStatusCode.BadRequest { description = "date fora do formato AAAA-MM-DD" }
-                        HttpStatusCode.NotFound { description = "Setup inexistente" }
+                        HttpStatusCode.BadRequest { schema = jsonSchema<Problem>() }
+                        HttpStatusCode.NotFound { schema = jsonSchema<Problem>() }
                     }
                 }
 
                 post {
                     val setupId = call.parameters["id"]?.toIntOrNull()
-                        ?: return@post call.respond(HttpStatusCode.BadRequest)
-                    if (setups.find(setupId) == null) return@post call.respond(HttpStatusCode.NotFound)
-                    val created = sessions.add(setupId, call.receive<NewSession>())
+                        ?: throw BadRequestException("O id deve ser um número inteiro")
+                    if (setups.find(setupId) == null) throw NotFoundException("O setup $setupId não existe")
+                    val new = call.receive<NewSession>()
+                    val violations = new.violations()
+                    if (violations.isNotEmpty()) throw InvalidInput(violations)
+                    val created = sessions.add(setupId, new)
                     call.response.header(HttpHeaders.Location, "/setups/$setupId/sessions/${created.id}")
                     call.respond(HttpStatusCode.Created, created)
                 }.describe {
@@ -152,17 +173,19 @@ fun Application.routes() {
                     requestBody { schema = jsonSchema<NewSession>() }
                     responses {
                         HttpStatusCode.Created { schema = jsonSchema<Session>() }
-                        HttpStatusCode.NotFound { description = "Setup inexistente" }
+                        HttpStatusCode.BadRequest { schema = jsonSchema<Problem>() }
+                        HttpStatusCode.NotFound { schema = jsonSchema<Problem>() }
+                        HttpStatusCode.UnprocessableEntity { schema = jsonSchema<Problem>() }
                     }
                 }
 
                 get("/{sessionId}") {
                     val setupId = call.parameters["id"]?.toIntOrNull()
-                        ?: return@get call.respond(HttpStatusCode.BadRequest)
+                        ?: throw BadRequestException("O id deve ser um número inteiro")
                     val sessionId = call.parameters["sessionId"]?.toIntOrNull()
-                        ?: return@get call.respond(HttpStatusCode.BadRequest)
+                        ?: throw BadRequestException("O sessionId deve ser um número inteiro")
                     val session = sessions.find(setupId, sessionId)
-                        ?: return@get call.respond(HttpStatusCode.NotFound)
+                        ?: throw NotFoundException("A sessão $sessionId não existe no setup $setupId")
                     call.respond(session)
                 }.describe {
                     summary = "Busca uma sessão"
@@ -172,17 +195,21 @@ fun Application.routes() {
                     }
                     responses {
                         HttpStatusCode.OK { schema = jsonSchema<Session>() }
-                        HttpStatusCode.NotFound { description = "Sessão inexistente neste setup" }
+                        HttpStatusCode.BadRequest { schema = jsonSchema<Problem>() }
+                        HttpStatusCode.NotFound { schema = jsonSchema<Problem>() }
                     }
                 }
 
                 put("/{sessionId}") {
                     val setupId = call.parameters["id"]?.toIntOrNull()
-                        ?: return@put call.respond(HttpStatusCode.BadRequest)
+                        ?: throw BadRequestException("O id deve ser um número inteiro")
                     val sessionId = call.parameters["sessionId"]?.toIntOrNull()
-                        ?: return@put call.respond(HttpStatusCode.BadRequest)
-                    val updated = sessions.update(setupId, sessionId, call.receive<NewSession>())
-                        ?: return@put call.respond(HttpStatusCode.NotFound)
+                        ?: throw BadRequestException("O sessionId deve ser um número inteiro")
+                    val new = call.receive<NewSession>()
+                    val violations = new.violations()
+                    if (violations.isNotEmpty()) throw InvalidInput(violations)
+                    val updated = sessions.update(setupId, sessionId, new)
+                        ?: throw NotFoundException("A sessão $sessionId não existe no setup $setupId")
                     call.respond(updated)
                 }.describe {
                     summary = "Substitui uma sessão"
@@ -193,16 +220,20 @@ fun Application.routes() {
                     requestBody { schema = jsonSchema<NewSession>() }
                     responses {
                         HttpStatusCode.OK { schema = jsonSchema<Session>() }
-                        HttpStatusCode.NotFound { description = "Sessão inexistente neste setup" }
+                        HttpStatusCode.BadRequest { schema = jsonSchema<Problem>() }
+                        HttpStatusCode.NotFound { schema = jsonSchema<Problem>() }
+                        HttpStatusCode.UnprocessableEntity { schema = jsonSchema<Problem>() }
                     }
                 }
 
                 delete("/{sessionId}") {
                     val setupId = call.parameters["id"]?.toIntOrNull()
-                        ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                        ?: throw BadRequestException("O id deve ser um número inteiro")
                     val sessionId = call.parameters["sessionId"]?.toIntOrNull()
-                        ?: return@delete call.respond(HttpStatusCode.BadRequest)
-                    if (!sessions.remove(setupId, sessionId)) return@delete call.respond(HttpStatusCode.NotFound)
+                        ?: throw BadRequestException("O sessionId deve ser um número inteiro")
+                    if (!sessions.remove(setupId, sessionId)) {
+                        throw NotFoundException("A sessão $sessionId não existe no setup $setupId")
+                    }
                     call.respond(HttpStatusCode.NoContent)
                 }.describe {
                     summary = "Remove uma sessão"
@@ -212,7 +243,8 @@ fun Application.routes() {
                     }
                     responses {
                         HttpStatusCode.NoContent { description = "Sessão removida" }
-                        HttpStatusCode.NotFound { description = "Sessão inexistente neste setup" }
+                        HttpStatusCode.BadRequest { schema = jsonSchema<Problem>() }
+                        HttpStatusCode.NotFound { schema = jsonSchema<Problem>() }
                     }
                 }
             }

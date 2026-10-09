@@ -5,6 +5,7 @@ import br.ufrn.noscroll.adapters.persistence.PostgresSessionRepository
 import br.ufrn.noscroll.adapters.persistence.PostgresSetupRepository
 import br.ufrn.noscroll.adapters.persistence.createDataSource
 import br.ufrn.noscroll.adapters.persistence.migrate
+import br.ufrn.noscroll.adapters.web.handleErrors
 import br.ufrn.noscroll.adapters.web.routes
 import br.ufrn.noscroll.domain.SessionRepository
 import br.ufrn.noscroll.domain.SetupRepository
@@ -42,5 +43,6 @@ fun Application.configure(setups: SetupRepository, sessions: SessionRepository) 
         )
     }
     install(ContentNegotiation) { json() }
+    handleErrors()
     routes()
 }
