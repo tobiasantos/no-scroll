@@ -16,7 +16,11 @@ data class Session(
 data class NewSession(
     val startedAt: Instant,
     val durationMinutes: Int,
-)
+) {
+    fun violations(): List<String> = buildList {
+        if (durationMinutes !in 1..1440) add("durationMinutes: entre 1 e 1440")
+    }
+}
 
 interface SessionRepository {
     suspend fun list(setupId: Int, date: LocalDate?): List<Session>
