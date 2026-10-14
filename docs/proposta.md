@@ -20,8 +20,12 @@ Nosso produto alerta como um despertador, uma vez ou periodicamente, até o usu�
 | CRUD de regras de uso por app (limite diário e tipo de alerta) | App mobile que lê o tempo de uso do celular           |
 | Registro de sessões de uso por app                             | Bloquear o scroll ou interceptar requisições dos apps |
 | Status do dia: minutos usados, restantes e se passou do limite | Notificações push enviadas pelo servidor              |
-| Cache do status, com métricas de acerto                        | Estatísticas e histórico semanal                      |
-| Autenticação: cada usuário vê só as suas regras                | Metas, recompensas e gamificação                      |
+| Sistema no ar: API, serviço Go e banco gerenciado              | Estatísticas e histórico semanal                      |
+|                                                                | Metas, recompensas e gamificação                      |
+|                                                                | Cache do status e autenticação (v2, ver abaixo)       |
+
+Com o ajuste do calendário da disciplina em 03/10 (três entregas em vez de cinco), o cache do
+status e a autenticação saíram do semestre e ficam para a v2.
 
 **Hipótese de valor:** acreditamos que pessoas que querem reduzir o tempo em redes sociais vão
 respeitar limites definidos por elas mesmas porque um alerta insistente interrompe o scroll
@@ -37,8 +41,8 @@ Backlog priorizado no GitHub Projects: [no-scroll — backlog](https://github.co
 | P1   | Como usuário, quero listar, editar e remover minhas regras para ajustá-las             | Listagem paginada e filtrável por app; `404` para id inexistente                             | 2          | 1      |
 | P1   | Como app mobile, quero registrar sessões de uso de um app para acumular o tempo do dia | Sessão ligada a uma regra; duração positiva; filtro por data                                 | 3          | 1      |
 | P1   | Como usuário, quero saber quanto já usei hoje para saber se passei do limite           | Serviço Go calcula usados, restantes e excedido; chamada gRPC com deadline                   | 5          | 2      |
-| P2   | Como usuário, quero que o status responda rápido porque o app consulta com frequência  | Cache com TTL e invalidação ao registrar sessão; métricas de hit/miss                        | 3          | 3      |
-| P2   | Como usuário, quero me autenticar para que só eu veja e altere minhas regras           | JWT com refresh; teste provando que um usuário não acessa regra de outro                     | 5          | Final  |
+| P2   | Como usuário, quero que o status responda rápido porque o app consulta com frequência  | Cache com TTL e invalidação ao registrar sessão; métricas de hit/miss                        | 3          | v2     |
+| P2   | Como usuário, quero me autenticar para que só eu veja e altere minhas regras           | JWT com refresh; teste provando que um usuário não acessa regra de outro                     | 5          | v2     |
 
 P1 é essencial ao MVP, P2 é importante. Estimativa em pontos.
 
@@ -66,7 +70,7 @@ interoperável com Java, o Kotlin usa bibliotecas maduras como Flyway, HikariCP 
 | ------------------------------------------------------- | ------------------------------------------------------------ |
 | Entidades Setup, Session e User e suas regras           | Soma as sessões do dia e compara com o limite da regra       |
 | Persistência no PostgreSQL e migrações                  | Devolve minutos usados, restantes e se o limite foi excedido |
-| Autenticação e autorização                              | Cache do status do dia, com métricas de acerto (Sprint 3)    |
+| Autenticação e autorização (v2)                         | Cache do status do dia, com métricas de acerto (v2)    |
 | Orquestração: recebe a requisição e chama o Go por gRPC |                                                              |
 
 **Justificativa:** o status do dia é a consulta mais frequente do sistema, porque o app mobile
