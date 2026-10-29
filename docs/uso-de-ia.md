@@ -12,3 +12,4 @@
 | Claude Code | Paginação no SQL e filtros (?page, ?size, ?app, ?date), seguindo a pte2 11.3 e o MUSI | 06/10/2026 |
 | Claude Code | Validação no domínio e erros em problem details (Passo 11 do exemplo) e testes unitários do domínio | 09/10/2026 |
 | Claude Code | README da Sprint 1 (rotas, arquitetura, testes, checklist) e ajuste da proposta ao calendário de 03/10 | 14/10/2026 |
+| Claude Code | Domínio do serviço Go (avaliar o uso e alertar nos canais), testes, demo e ADR-0001, seguindo o Passo 13 do exemplo avisos-go | 29/10/2026 |
