@@ -13,3 +13,4 @@
 | Claude Code | Validação no domínio e erros em problem details (Passo 11 do exemplo) e testes unitários do domínio | 09/10/2026 |
 | Claude Code | README da Sprint 1 (rotas, arquitetura, testes, checklist) e ajuste da proposta ao calendário de 03/10 | 14/10/2026 |
 | Claude Code | Domínio do serviço Go (avaliar o uso e alertar nos canais), testes, demo e ADR-0001, seguindo o Passo 13 do exemplo avisos-go | 29/10/2026 |
+| Claude Code | Contrato .proto comentado com buf (lint e geração dos stubs), servidor gRPC do avaliador com health check, reflection e encerramento gracioso, e buf lint no CI, seguindo os passos 14 e 15 do exemplo avisos-go | 11/11/2026 |
