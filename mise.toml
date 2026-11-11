@@ -1,6 +1,8 @@
 [tools]
 java = "temurin-25"
 go   = "1.27"
+buf  = "1.71.0"
+grpcurl = "1.9.3"
 
 [tasks.build]
 shell = "bash -c"
@@ -23,7 +25,23 @@ shell = "bash -c"
 description = "Verificacoes estaticas"
 run = [
   "cd services && go vet ./...",
+  "cd protos && buf lint",
 ]
+
+[tasks."buf:gen"]
+shell = "bash -c"
+description = "Gera os stubs Go a partir do contrato .proto"
+run = "cd protos && buf generate"
+
+[tasks."evaluator:run"]
+shell = "bash -c"
+description = "Sobe o servico Go avaliador, gRPC na 50051"
+run = "cd services && go run ./cmd/evaluator"
+
+[tasks."evaluator:call"]
+shell = "bash -c"
+description = "Chama o avaliador com o grpcurl, com um uso acima do limite"
+run = """grpcurl -plaintext -d '{"app_name":"TikTok","limit_minutes":30,"session_minutes":[25,10]}' localhost:50051 noscroll.evaluator.v1.EvaluatorService/EvaluateUsage"""
 
 [tasks.up]
 shell = "bash -c"

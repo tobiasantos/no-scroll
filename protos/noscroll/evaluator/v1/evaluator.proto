@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+// Contrato do serviço avaliador: a API (Ktor) envia o uso do dia de um app, e o serviço Go
+// calcula se o limite foi ultrapassado e, se foi, dispara o alerta em vários canais.
+package noscroll.evaluator.v1;
+
+option go_package = "github.com/tobiasantos/no-scroll/services/gen/noscroll/evaluator/v1;evaluatorv1";
+option java_multiple_files = true;
+option java_package = "br.ufrn.noscroll.evaluator.v1";
+
+// Avalia o uso diário de um app e alerta quando ele passa do limite.
+service EvaluatorService {
+  // Soma os minutos das sessões do dia e compara com o limite. Se o uso passou do limite,
+  // alerta em todos os canais ao mesmo tempo. Responde INVALID_ARGUMENT se o app estiver em
+  // branco, se o limite estiver fora de 1 a 1440 ou se alguma sessão não tiver minutos.
+  // Respeita o prazo (deadline) de quem chama: canais que não terminarem a tempo voltam
+  // como não entregues.
+  rpc EvaluateUsage(EvaluateUsageRequest) returns (EvaluateUsageResponse);
+}
+
+// O uso do dia de um app.
+message EvaluateUsageRequest {
+  // Nome do app, como cadastrado no setup (ex.: Instagram). Não pode ficar em branco.
+  string app_name = 1;
+  // Limite diário, em minutos, de 1 a 1440.
+  int32 limit_minutes = 2;
+  // A duração, em minutos, de cada sessão do dia. Cada valor precisa ser maior que zero.
+  repeated int32 session_minutes = 3;
+}
+
+// O resultado da avaliação.
+message EvaluateUsageResponse {
+  // Soma dos minutos das sessões do dia.
+  int32 used_minutes = 1;
+  // Minutos que ainda restam até o limite; zero quando o limite foi atingido ou ultrapassado.
+  int32 remaining_minutes = 2;
+  // Verdadeiro quando o uso passou do limite.
+  bool exceeded = 3;
+  // As entregas do alerta, uma por canal, na ordem dos canais do serviço. Vazia quando o
+  // limite não foi ultrapassado.
+  repeated Delivery deliveries = 4;
+}
+
+// O resultado do alerta em um canal.
+message Delivery {
+  // Nome do canal: alarm, push ou email.
+  string channel = 1;
+  // Verdadeiro se o canal entregou o alerta.
+  bool delivered = 2;
+  // Motivo da falha, quando não entregue; vazio quando entregue.
+  string error = 3;
+}
