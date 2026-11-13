@@ -9,6 +9,7 @@ import br.ufrn.noscroll.domain.Session
 import br.ufrn.noscroll.domain.SessionRepository
 import br.ufrn.noscroll.domain.Setup
 import br.ufrn.noscroll.domain.SetupRepository
+import br.ufrn.noscroll.domain.UsageEvaluator
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.openapi.OpenApiInfo
@@ -30,12 +31,15 @@ import io.ktor.server.routing.routing
 import io.ktor.utils.io.ExperimentalKtorApi
 import org.koin.ktor.ext.inject
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.DateTimeParseException
+import kotlin.time.toJavaInstant
 
 @OptIn(ExperimentalKtorApi::class)
 fun Application.routes() {
     val setups by inject<SetupRepository>()
     val sessions by inject<SessionRepository>()
+    val evaluator by inject<UsageEvaluator>()
 
     routing {
         route("/setups") {
@@ -160,11 +164,13 @@ fun Application.routes() {
                 post {
                     val setupId = call.parameters["id"]?.toIntOrNull()
                         ?: throw BadRequestException("O id deve ser um número inteiro")
-                    if (setups.find(setupId) == null) throw NotFoundException("O setup $setupId não existe")
+                    val setup = setups.find(setupId) ?: throw NotFoundException("O setup $setupId não existe")
                     val new = call.receive<NewSession>()
                     val violations = new.violations()
                     if (violations.isNotEmpty()) throw InvalidInput(violations)
                     val created = sessions.add(setupId, new)
+                    val day = created.startedAt.toJavaInstant().atOffset(ZoneOffset.UTC).toLocalDate()
+                    evaluator.evaluate(setup, sessions.list(setupId, day))
                     call.response.header(HttpHeaders.Location, "/setups/$setupId/sessions/${created.id}")
                     call.respond(HttpStatusCode.Created, created)
                 }.describe {

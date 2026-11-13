@@ -14,3 +14,4 @@
 | Claude Code | README da Sprint 1 (rotas, arquitetura, testes, checklist) e ajuste da proposta ao calendário de 03/10 | 14/10/2026 |
 | Claude Code | Domínio do serviço Go (avaliar o uso e alertar nos canais), testes, demo e ADR-0001, seguindo o Passo 13 do exemplo avisos-go | 29/10/2026 |
 | Claude Code | Contrato .proto comentado com buf (lint e geração dos stubs), servidor gRPC do avaliador com health check, reflection e encerramento gracioso, e buf lint no CI, seguindo os passos 14 e 15 do exemplo avisos-go | 11/11/2026 |
+| Claude Code | API chama o avaliador em Go por gRPC ao registrar uma sessão: porta no domínio, stubs gerados pelo Gradle, adaptador com prazo, testes com servidor em memória e regra de arquitetura, seguindo o Passo 16 do exemplo ktor-tarefas | 13/11/2026 |

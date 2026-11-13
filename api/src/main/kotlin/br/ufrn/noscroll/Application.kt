@@ -1,5 +1,7 @@
 package br.ufrn.noscroll
 
+import br.ufrn.noscroll.adapters.evaluator.GrpcUsageEvaluator
+import br.ufrn.noscroll.adapters.evaluator.InMemoryUsageEvaluator
 import br.ufrn.noscroll.adapters.persistence.DbConfig
 import br.ufrn.noscroll.adapters.persistence.PostgresSessionRepository
 import br.ufrn.noscroll.adapters.persistence.PostgresSetupRepository
@@ -9,6 +11,7 @@ import br.ufrn.noscroll.adapters.web.handleErrors
 import br.ufrn.noscroll.adapters.web.routes
 import br.ufrn.noscroll.domain.SessionRepository
 import br.ufrn.noscroll.domain.SetupRepository
+import br.ufrn.noscroll.domain.UsageEvaluator
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
@@ -30,15 +33,24 @@ fun Application.module(config: DbConfig = DbConfig.fromEnv()) {
     migrate(dataSource)
     monitor.subscribe(ApplicationStopped) { dataSource.close() }
     val db = Database.connect(dataSource)
-    configure(PostgresSetupRepository(db), PostgresSessionRepository(db))
+
+    val evaluator = GrpcUsageEvaluator.to(System.getenv("EVALUATOR_ADDRESS") ?: "localhost:50051")
+    monitor.subscribe(ApplicationStopped) { evaluator.close() }
+
+    configure(PostgresSetupRepository(db), PostgresSessionRepository(db), evaluator)
 }
 
-fun Application.configure(setups: SetupRepository, sessions: SessionRepository) {
+fun Application.configure(
+    setups: SetupRepository,
+    sessions: SessionRepository,
+    evaluator: UsageEvaluator = InMemoryUsageEvaluator(),
+) {
     install(Koin) {
         modules(
             module {
                 single<SetupRepository> { setups }
                 single<SessionRepository> { sessions }
+                single<UsageEvaluator> { evaluator }
             },
         )
     }
