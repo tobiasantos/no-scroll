@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm") version "2.4.10"
     kotlin("plugin.serialization") version "2.4.10"
     application
+    id("com.google.protobuf") version "0.10.0"
 }
 
 repositories { mavenCentral() }
@@ -29,11 +30,35 @@ dependencies {
     implementation("io.ktor:ktor-server-routing-openapi:3.5.2")
     implementation("io.ktor:ktor-server-swagger:3.5.2")
 
+    implementation(platform("io.grpc:grpc-bom:1.85.0"))
+    implementation("io.grpc:grpc-netty-shaded")
+    implementation("io.grpc:grpc-protobuf")
+    implementation("io.grpc:grpc-stub")
+    implementation("io.grpc:grpc-kotlin-stub:1.5.0")
+    implementation("com.google.protobuf:protobuf-kotlin:4.36.2")
+
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-server-test-host:3.5.2")
     testImplementation("io.ktor:ktor-client-content-negotiation:3.5.2")
     testImplementation("org.testcontainers:testcontainers-postgresql:2.0.5")
     testImplementation("com.tngtech.archunit:archunit:1.5.0")
+    testImplementation("io.grpc:grpc-inprocess")
+}
+
+sourceSets { main { proto { srcDir("../protos") } } }
+
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:4.36.2" }
+    plugins {
+        create("grpc") { artifact = "io.grpc:protoc-gen-grpc-java:1.85.0" }
+        create("grpckt") { artifact = "io.grpc:protoc-gen-grpc-kotlin:1.5.0:jdk8@jar" }
+    }
+    generateProtoTasks {
+        all().forEach {
+            it.plugins { create("grpc"); create("grpckt") }
+            it.builtins { create("kotlin") }
+        }
+    }
 }
 
 kotlin { jvmToolchain(25) }

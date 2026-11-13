@@ -36,7 +36,8 @@ class ArchitectureTest {
                 .should().dependOnClassesThat().resideInAnyPackage(
                     "io.ktor..", "org.koin..", "org.jetbrains.exposed..", "java.sql..", "javax.sql..",
                     "com.zaxxer..", "org.flywaydb..", "org.postgresql..",
+                    "io.grpc..", "com.google.protobuf..", "br.ufrn.noscroll.evaluator..",
                 )
-                .because("o domínio não sabe de HTTP, banco nem injeção de dependência")
+                .because("o domínio não sabe de HTTP, banco, gRPC nem injeção de dependência")
     }
 }

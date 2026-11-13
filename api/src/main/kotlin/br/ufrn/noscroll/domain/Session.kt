@@ -29,3 +29,7 @@ interface SessionRepository {
     suspend fun update(setupId: Int, id: Int, new: NewSession): Session?
     suspend fun remove(setupId: Int, id: Int): Boolean
 }
+
+fun interface UsageEvaluator {
+    suspend fun evaluate(setup: Setup, todaySessions: List<Session>): Boolean
+}

@@ -1,5 +1,6 @@
 package br.ufrn.noscroll
 
+import br.ufrn.noscroll.adapters.evaluator.InMemoryUsageEvaluator
 import br.ufrn.noscroll.adapters.persistence.InMemorySessionRepository
 import br.ufrn.noscroll.adapters.persistence.InMemorySetupRepository
 import io.ktor.client.request.get
@@ -85,5 +86,30 @@ class RoutesTest {
         val response = client.get("/setups/9999")
         assertEquals(HttpStatusCode.NotFound, response.status)
         assertEquals(ContentType.Application.ProblemJson, response.contentType()?.withoutParameters())
+    }
+
+    @Test
+    fun `registrar sessao avalia o uso do dia`() = testApplication {
+        val evaluator = InMemoryUsageEvaluator()
+        application { configure(InMemorySetupRepository(), InMemorySessionRepository(), evaluator) }
+        for (startedAt in listOf("2026-11-12T23:00:00Z", "2026-11-13T10:00:00Z", "2026-11-13T15:00:00Z")) {
+            client.post("/setups/1/sessions") {
+                contentType(ContentType.Application.Json)
+                setBody("""{"startedAt":"$startedAt","durationMinutes":20}""")
+            }
+        }
+        val (setup, todaySessions) = evaluator.evaluated.last()
+        assertEquals(1, setup.id)
+        assertEquals(2, todaySessions.size)
+    }
+
+    @Test
+    fun `avaliacao que falha nao impede o registro da sessao`() = testApplication {
+        application { configure(InMemorySetupRepository(), InMemorySessionRepository()) { _, _ -> false } }
+        val response = client.post("/setups/1/sessions") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"startedAt":"2026-11-13T10:00:00Z","durationMinutes":20}""")
+        }
+        assertEquals(HttpStatusCode.Created, response.status)
     }
 }
