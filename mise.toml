@@ -45,8 +45,18 @@ run = """grpcurl -plaintext -d '{"app_name":"TikTok","limit_minutes":30,"session
 
 [tasks.up]
 shell = "bash -c"
-description = "Sobe o ambiente com Docker Compose"
-run = "docker compose up -d"
+description = "Sobe so o banco, para rodar a API com mise run run"
+run = "docker compose up -d db"
+
+[tasks.all]
+shell = "bash -c"
+description = "Sobe banco, servico Go e API em containers"
+run = "docker compose up --build"
+
+[tasks."all:stop"]
+shell = "bash -c"
+description = "Para os containers; com -v, apaga os dados"
+run = "docker compose down"
 
 [tasks.run]
 shell = "bash -c"

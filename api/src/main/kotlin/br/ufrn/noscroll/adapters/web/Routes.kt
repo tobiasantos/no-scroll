@@ -21,6 +21,7 @@ import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.request.receive
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.openapi.describe
@@ -42,6 +43,8 @@ fun Application.routes() {
     val evaluator by inject<UsageEvaluator>()
 
     routing {
+        get("/health") { call.respondText("ok") }
+
         route("/setups") {
             get {
                 val page = call.request.queryParameters["page"]

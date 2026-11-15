@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
@@ -21,6 +24,9 @@ func main() {
 	port := os.Getenv("EVALUATOR_PORT")
 	if port == "" {
 		port = "50051"
+	}
+	if len(os.Args) > 1 && os.Args[1] == "health" {
+		os.Exit(checkHealth(port))
 	}
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
@@ -51,4 +57,19 @@ func main() {
 		slog.Error("server stopped", "error", err)
 		os.Exit(1)
 	}
+}
+
+func checkHealth(port string) int {
+	conn, err := grpc.NewClient("localhost:"+port, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return 1
+	}
+	defer conn.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	resp, err := healthpb.NewHealthClient(conn).Check(ctx, &healthpb.HealthCheckRequest{})
+	if err != nil || resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+		return 1
+	}
+	return 0
 }

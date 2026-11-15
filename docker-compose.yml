@@ -7,5 +7,35 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-noscroll}
     ports: ["5432:5432"]
     volumes: [dados:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-noscroll} -d ${DB_NAME:-noscroll}"]
+      interval: 3s
+      retries: 20
+
+  evaluator:
+    build: ./services
+    healthcheck:
+      test: ["CMD", "/evaluator", "health"]
+      interval: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    ports: ["8080:8080"]
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-noscroll}
+      DB_USER: ${DB_USER:-noscroll}
+      DB_PASSWORD: ${DB_PASSWORD:-noscroll}
+      EVALUATOR_ADDRESS: evaluator:50051
+    depends_on:
+      db: { condition: service_healthy }
+      evaluator: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/health"]
+      interval: 5s
+      retries: 30
+
 volumes:
   dados:
