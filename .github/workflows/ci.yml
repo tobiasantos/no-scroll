@@ -50,3 +50,45 @@ jobs:
       - run: go vet ./...
       - run: go build ./...
       - run: go test ./...
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up --build --wait
+      - run: curl -fs localhost:8080/health
+      - run: docker compose ps
+      - if: always()
+        run: docker compose logs && docker compose down -v
+
+  images:
+    needs: [protos, api, services, compose]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - name: evaluator
+            context: services
+            dockerfile: services/Dockerfile
+          - name: api
+            context: .
+            dockerfile: api/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/${{ matrix.name }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/${{ matrix.name }}:latest
