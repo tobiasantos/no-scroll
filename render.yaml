@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: no-scroll-api
+    runtime: image
+    image:
+      url: ghcr.io/tobiasantos/no-scroll/api:latest
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
