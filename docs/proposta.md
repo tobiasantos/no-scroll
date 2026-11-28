@@ -66,18 +66,19 @@ interoperável com Java, o Kotlin usa bibliotecas maduras como Flyway, HikariCP 
 
 ## 6. Divisão entre o serviço principal e o Go
 
-| Serviço principal (Kotlin/Ktor)                         | Serviço Go (`avaliador`)                                     |
-| ------------------------------------------------------- | ------------------------------------------------------------ |
-| Entidades Setup, Session e User e suas regras           | Soma as sessões do dia e compara com o limite da regra       |
-| Persistência no PostgreSQL e migrações                  | Devolve minutos usados, restantes e se o limite foi excedido |
-| Autenticação e autorização (v2)                         | Cache do status do dia, com métricas de acerto (v2)    |
-| Orquestração: recebe a requisição e chama o Go por gRPC |                                                              |
+| Serviço principal (Kotlin/Ktor)                         | Serviço Go (`evaluator`)                                      |
+| ------------------------------------------------------- | ------------------------------------------------------------- |
+| Entidades Setup e Session e suas regras                 | Soma as sessões do dia e compara com o limite da regra        |
+| Persistência no PostgreSQL e migrações                  | Devolve minutos usados, restantes e se o limite foi excedido  |
+| Orquestração: recebe a requisição e chama o Go por gRPC | Se excedeu, dispara o alerta em vários canais ao mesmo tempo  |
+| Autenticação e autorização (v2)                         | Cache do status do dia, com métricas de acerto (v2)           |
 
-**Justificativa:** o status do dia é a consulta mais frequente do sistema, porque o app mobile
-pergunta repetidamente se o limite foi ultrapassado. É processamento e pré-computação que se
-beneficia de cache, trabalho que a disciplina associa aos serviços Go. Isolar esse cálculo num
-serviço leve deixa o serviço principal responsável só pelo CRUD e pela segurança. A comunicação
-é por gRPC, com o contrato em `protos/`.
+**Justificativa:** só somar minutos não justificaria um serviço à parte. O que justifica é o
+alerta: avisar o usuário em vários canais (despertador, push, e-mail) é E/S que espera por
+terceiros, e o Go faz isso em paralelo, uma goroutine por canal, respeitando o prazo de quem
+chamou. A API fica com o CRUD e a persistência. A comunicação é por gRPC, com o contrato em
+`protos/`. Decisão registrada em [ADR-0001](decisoes/0001-servico-go-avaliador.md) (29/10), que
+substitui a ideia inicial desta seção (cálculo do status com cache).
 
 ## 7. Equipe
 
