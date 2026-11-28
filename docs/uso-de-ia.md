@@ -18,3 +18,4 @@
 | Claude Code | Dockerfiles da API e do serviço Go, health checks (rota /health e subcomando health do Go) e docker compose com banco, Go e API, seguindo o Passo 17 do exemplo | 15/11/2026 |
 | Claude Code | CI sobe o docker compose e espera os serviços saudáveis, e publica as imagens da API e do Go no GHCR na main, seguindo o modelo ci-e-imagens.yml do Passo 18 | 17/11/2026 |
 | Claude Code | Implantação: comando migrate e PORT na API, render.yaml (API no Render, banco no Neon, segredos fora do repositório), task db:migrate e ADR-0002, seguindo o Passo 18 do exemplo | 26/11/2026 |
+| Claude Code | README da entrega final (o que é, arquitetura, no ar, pré-requisitos, como rodar e testar, exemplos), LICENSE, correção da ADR-0002 e seção 6 da proposta | 28/11/2026 |

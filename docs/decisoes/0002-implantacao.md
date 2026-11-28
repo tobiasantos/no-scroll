@@ -66,4 +66,6 @@ modelo `exemplos/implantacao/render.yaml`):
 2. No painel do Render, o serviço `no-scroll-api` com a imagem do GHCR, os três segredos e o
    health check em `/health` verde.
 3. `curl <url-do-render>/health` devolve `200`; `POST /setups/{id}/sessions` devolve `201` e o log
-   do Render mostra `not evaluated: UNAVAILABLE`.
+   do Render mostra `not evaluated: DEADLINE_EXCEEDED` (nada responde no endereço do Go e o prazo
+   de 1 s vence) ou `UNAVAILABLE` (conexão recusada na hora). Verificado em 26/11: `201 Created`
+   e `setup 1 not evaluated: DEADLINE_EXCEEDED`.
